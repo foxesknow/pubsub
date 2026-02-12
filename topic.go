@@ -14,7 +14,7 @@ type Topic[T any] struct {
 }
 
 // Subscribes to the topic using an unbuffered channel
-func (t *Topic[T]) Subscribe() (chan<- T, error) {
+func (t *Topic[T]) SubscribeUnbuffered() (<-chan T, error) {
 	t.guard.Lock()
 	defer t.guard.Unlock()
 
@@ -28,19 +28,40 @@ func (t *Topic[T]) Subscribe() (chan<- T, error) {
 	return channel, nil
 }
 
-// Subscribes to the topic using an existing channel.
-// The topic will take ownership of the channel
-func (t *Topic[T]) SubscribeWith(channel chan T) error {
+// Subscribes to the topic using a buff
+func (t *Topic[T]) SubscribeBuffered(capacity int) (<-chan T, error) {
 	t.guard.Lock()
 	defer t.guard.Unlock()
 
 	if t.closed {
-		return topicIsClosed
+		return nil, topicIsClosed
 	}
 
+	channel := make(chan T, capacity)
 	t.channels = append(t.channels, channel)
 
-	return nil
+	return channel, nil
+}
+
+// Unsubscribes a channel from a topic
+func (t *Topic[T]) Unsubscribe(channel <-chan T) bool {
+	t.guard.Lock()
+	defer t.guard.Unlock()
+
+	if t.closed {
+		return true
+	}
+
+	for i, c := range t.channels {
+		if c == channel {
+			t.channels = append(t.channels[:i], t.channels[i+1:]...)
+			close(c)
+
+			return true
+		}
+	}
+
+	return false
 }
 
 // Closes all channels. After this attempts to subscribe or publish will fail.
@@ -62,17 +83,19 @@ func (t *Topic[T]) Close() {
 	t.channels = nil
 }
 
-func (t *Topic[T]) Publish(data T) error {
+// Sends data to all channels in the topic.
+// Returns the number of channels that received data.
+func (t *Topic[T]) Publish(data T) (int, error) {
 	t.guard.RLock()
 	defer t.guard.RUnlock()
 
 	if t.closed {
-		return topicIsClosed
+		return 0, topicIsClosed
 	}
 
 	for _, channel := range t.channels {
 		channel <- data
 	}
 
-	return nil
+	return len(t.channels), nil
 }
