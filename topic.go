@@ -83,8 +83,8 @@ func (t *Topic[T]) Close() {
 	t.channels = nil
 }
 
-// Sends data to all channels in the topic.
-// Returns the number of channels that received data.
+// Sends data to all subscribers in the topic.
+// Returns the number of subscribers that received data.
 func (t *Topic[T]) Publish(data T) (int, error) {
 	t.guard.RLock()
 	defer t.guard.RUnlock()
