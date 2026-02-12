@@ -28,7 +28,7 @@ func (t *Topic[T]) SubscribeUnbuffered() (<-chan T, error) {
 	return channel, nil
 }
 
-// Subscribes to the topic using a buff
+// Subscribes to the topic using a buffered channel
 func (t *Topic[T]) SubscribeBuffered(capacity int) (<-chan T, error) {
 	t.guard.Lock()
 	defer t.guard.Unlock()
