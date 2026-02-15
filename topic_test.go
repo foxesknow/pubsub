@@ -6,6 +6,11 @@ import (
 	"testing"
 )
 
+func TestCheckInterfaces(t *testing.T) {
+	var _ Publisher[int32] = (*Topic[int32])(nil)
+	var _ Subscriber[int32] = (*Topic[int32])(nil)
+}
+
 func TestDefault(t *testing.T) {
 	var topic Topic[string]
 
